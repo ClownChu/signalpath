@@ -14,7 +14,7 @@ Feature: Add new item to list
   | Microsoft Edge             |                   | Create cucumber application capable of testing this page;Test application;Write application's documentation;Write test cases;Validate test cases;Submit testing application  |
   | Google Chrome              |                   | Create cucumber application capable of testing this page;Test application;Write application's documentation;Write test cases;Validate test cases;Submit testing application  |
     
-  @all @regression
+  @regression
   Examples:
     | browser                    | all-items-in-list                                                                                                                                | new-list-items                                                             |
     | Microsoft Edge             |                                                                                                                                                  | Create cucumber application capable of testing this page;Test application  |
