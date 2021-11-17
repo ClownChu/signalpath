@@ -1,0 +1,25 @@
+{
+  "name": "hellocucumber",
+  "version": "1.0.0",
+  "description": "Sample project to execute Behavior-driven/Gherkin style test cases for test automation, written following the Chain-of-responsibility pattern using selenium-webdriver with cucumberjs.",
+  "repository": "https://github.com/ClownChu/signalpath-cucumber.git",
+  "author": "Vitor de Souza <vitordesouza@hotmail.com.br>",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "start:smoke": "cucumber-js -t @smoke --publish",
+    "start:regression": "cucumber-js -t @regression --publish"
+  },
+  "keywords": [],
+  "license": "Unlicense",
+  "private": false,
+  "devDependencies": {
+    "@cucumber/cucumber": "^8.0.0-rc.1"
+  },
+  "dependencies": {
+    "chromedriver": "^95.0.0",
+    "eslint": "^8.2.0",
+    "msedgedriver": "^91.0.0",
+    "selenium-webdriver": "^4.0.0"
+  }
+}
