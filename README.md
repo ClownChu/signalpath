@@ -128,6 +128,11 @@ signalpath-cucumber
 └── README.md                                # This file!
 ```
 
+## Output example
+Command: `StartTestRun smoke`
+
+![Output example](/output_example.jpg)
+
 ## Related Projects
 
 Many of the core components and dependencies live in their own repositories on GitHub. For example:
