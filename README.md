@@ -26,8 +26,8 @@ Sample project to execute `Behavior-driven/Gherkin style` test cases for test au
   - Sample [Steps definitions](/features/steps).
   - Sample [Handlers](/handlers).
   - Sample [Helpers](/handlers/helpers) with browser automation using [Selenium WebDriver](https://github.com/SeleniumHQ/selenium/tree/trunk/javascript/node/selenium-webdriver).
-- Provides with [Cucumber Report](https://reports.cucumber.io/) with detailed analysis on the test results.
-- Provides with [Screenshots](/screenshots) of the browser window after each scenario execution for post run analysis.
+- Provides [Cucumber Report](https://reports.cucumber.io/) with detailed analysis on the test results.
+- Provides [Screenshots](/screenshots) of the browser window after each scenario execution for post run analysis.
 - Windows script to start run in [Headless mode](https://en.wikipedia.org/wiki/Headless_browser), and using custom [WebDrivers](https://www.w3.org/TR/webdriver2/).
 - [Custom WebDriver](/webdrivers) for latest [Google Chrome (v96)](/webdrivers/chromedriver) and [Microsoft Edge (v95)](/webdrivers/msedgedriver) versions.
 - Written as close as possible to [Chain-of-responsibility pattern](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern).
