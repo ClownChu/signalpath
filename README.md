@@ -1,7 +1,7 @@
-# SignalPath - CucumberJS with Selenium WebDriver
+# SignalPath - CucumberJS with Kita WebDriver
 ## JavaScript + Node.js Version
 
-Sample project to execute `Behavior-driven/Gherkin style` test cases for test automation, written following the [Chain-of-responsibility pattern](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) using `selenium-webdriver` with `cucumberjs`.
+Sample project to execute `Behavior-driven/Gherkin style` test cases for test automation, written following the [Chain-of-responsibility pattern](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) using `kita-webdriver` with `cucumberjs`.
 
 ## Table of Content
 
@@ -25,11 +25,11 @@ Sample project to execute `Behavior-driven/Gherkin style` test cases for test au
   - Sample `Gherkin style` [Features, Backgrounds, Scenarios, Data tables](/features).
   - Sample [Steps definitions](/features/steps).
   - Sample [Handlers](/handlers).
-  - Sample [Helpers](/handlers/helpers) with browser automation using [Selenium WebDriver](https://github.com/SeleniumHQ/selenium/tree/trunk/javascript/node/selenium-webdriver).
+  - Sample [Helpers](/handlers/helpers) with browser automation using [Kita WebDriver](https://github.com/clownchu/kita-webdriver).
 - Provides [Cucumber Report](https://reports.cucumber.io/) with detailed analysis on the test results.
 - Provides [Screenshots](/screenshots) of the browser window after each scenario execution for post run analysis.
 - Windows script to start run in [Headless mode](https://en.wikipedia.org/wiki/Headless_browser), and using custom [WebDrivers](https://www.w3.org/TR/webdriver2/).
-- [Custom WebDriver](/webdrivers) for latest [Google Chrome (v96)](/webdrivers/chromedriver) and [Microsoft Edge (v95)](/webdrivers/msedgedriver) versions.
+- [Custom WebDriver](/webdrivers) for latest [Google Chrome (v96)](/webdrivers/chromedriver) and [Microsoft Edge (v95)](/webdrivers/msedgedriver) versions. (DEPRECATED - Kita WebDriver requires no drivers)
 - Written as close as possible to [Chain-of-responsibility pattern](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern).
 - Uses [`eslint`](https://eslint.org/) with recommended rules to enforce consistent code style.
 - Uses [`yarn`](https://yarnpkg.com/en/) scripts for common operations.
@@ -47,7 +47,7 @@ You'll need the following tools:
 - [Yarn](https://yarnpkg.com/lang/en/docs/install/), version `>=1.17`
 - [Google Chrome](https://www.google.com/chrome/), version `>=76`
 - [Microsoft Edge](https://www.microsoft.com/en-us/edge), version `>=79`
-> `WebDriver` can be modified to execute tests in different `Google Chrome` or `Microsoft Edge` versions.
+> `WebDriver` is not necessary when using Kita WebDriver to tests in different `Google Chrome` or `Microsoft Edge` versions.
 
 ### Build and run in Windows
 
