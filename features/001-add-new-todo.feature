@@ -8,6 +8,11 @@ Feature: Add new item to list
     When I add the items: "<new-list-items>" to the list
     Then I should see "<new-list-items>" appended to "<all-items-in-list>"
 
+  @debug
+  Examples:
+  | browser                    | all-items-in-list | new-list-items                                                                                                                                                               |
+  | Microsoft Edge             |                   | Create cucumber application capable of testing this page;Test application;Write application's documentation;Write test cases;Validate test cases;Submit testing application  |
+
   @smoke
   Examples:
   | browser                    | all-items-in-list | new-list-items                                                                                                                                                               |

@@ -8,6 +8,11 @@ Feature: Remove items from the list
     When I click to remove the items: "<items-to-remove>"
     Then I should see only the remaining items "<remaining-items>" in the list
 
+  @debug
+  Examples:
+    | browser                    | all-items-in-list                                                                                                                                                           | items-to-remove                                                           | remaining-items                                                                                   |
+    | Microsoft Edge             | Create cucumber application capable of testing this page;Test application;Write application's documentation;Write test cases;Validate test cases;Submit testing application | Create cucumber application capable of testing this page;Test application | Write application's documentation;Write test cases;Validate test cases;Submit testing application |
+
   @smoke
   Examples:
     | browser                    | all-items-in-list                                                                                                                                                           | items-to-remove                                                           | remaining-items                                                                                   |

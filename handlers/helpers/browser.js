@@ -1,8 +1,11 @@
-const {Builder, By, Key, until} = require('selenium-webdriver')
-const Chrome = require('selenium-webdriver/chrome')
-const Edge = require('selenium-webdriver/edge')
 const path = require('path')
 const fs = require('fs')
+const { Kita, Definitions } = require('kita-webdriver')
+const screenshot = require('desktop-screenshot');
+const { xPathHelper } = require('./xPath');
+const { JSKeyboard } = require('./jsKeyboard');
+const { SystemHelper } = require('./System');
+const { exec } = require('child_process');
 
 class Browser {
     constructor () {
@@ -17,171 +20,235 @@ class Browser {
         this.userDataDir = null
 
         this.driver = null
-        this.Key = Key
     }
 
-    async initiateBrowser(browserDisplayName = 'Google Chrome', scenarioCollection = 'Default')
+    initiateBrowser(browserDisplayName = 'Google Chrome', scenarioCollection = 'Default')
     {
         this.browserDisplayName = browserDisplayName
         this.scenarioCollection = scenarioCollection
-        this.browserName = this.browserDisplayName.split('-')[0].trim()
+        this.browserName = this.browserDisplayName.split('-')[0].trim().toLowerCase()
 
         this.incognitoMode = false
         if (this.browserDisplayName.toLowerCase().includes('incognito') || this.browserDisplayName.toLowerCase().includes('inprivate')) {
             this.incognitoMode = true
         }
+        
+        this.driver = Kita.WebDriver.new(this.browserName)
+        this.driver.capabilities.set(Definitions.Capability.SupportedCapabilities.PRIVATE_MODE, this.incognitoMode)
+        this.driver.capabilities.set(Definitions.Capability.SupportedCapabilities.HEADLESS_MODE, this.headlessMode)
 
-        let options = null
-        let builder = null
-        switch (this.browserName) {
-            case "Google Chrome":
-                this.browserProcessName = 'chrome'
-                options = this.getWebDriverOptions(new Chrome.Options())
+        this.browserProcessName = this.driver.capabilities.get(Definitions.Capability.SupportedCapabilities.BROWSER_PROCESS_NAME)
 
-                builder = new Builder()
-                    .forBrowser('chrome')
-                    .setChromeOptions(options)
-
-                break
-            case "Microsoft Edge":
-                this.browserProcessName = 'msedge'
-                options = new Edge.Options()
-                options = this.getWebDriverOptions(new Edge.Options())
-
-                builder = new Builder()
-                    .forBrowser('MicrosoftEdge')
-                    .setEdgeOptions(options)
-
-                break
-        }
-
-        const customDriverPath = `${path.join(__dirname, `../../webdrivers/${this.browserProcessName}driver`)};`
-        if (!process.env.PATH.includes(customDriverPath)) {
-            require(`${this.browserProcessName}driver`)
-        }
-
-        this.driver = builder.build()
-    }
-
-    getWebDriverOptions(options) {
         this.userDataDir = path.join(__dirname, `../../temp/${this.scenarioCollection}/userdata/${this.browserProcessName}`)
+        this.driver.capabilities.set(Definitions.Capability.SupportedCapabilities.USER_DATA_DIR, this.userDataDir)
 
-        options.addArguments('no-first-run')
-        options.addArguments('disable-sync')
-        options.addArguments('disable-gpu')
-        options.addArguments('enable-automation')
-        options.addArguments('start-maximized')
-
-        if (this.incognitoMode) {
-            options.addArguments('incognito')
-            options.addArguments('inprivate')
-        } else {
-            options.addArguments(`user-data-dir=${this.userDataDir}`)
-        }
-
-        if (this.headlessMode) {
-            options.addArguments('headless')
-        }
-
-        return options
+        return new Promise((resolve, reject) => {
+            this.driver.start().then(() => {
+                this.waitForHTMLElement('/html/body', 30 * 1000).then((result) => {
+                    resolve(result)
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
 
-    async closeBrowserWindow() {
-        return this.driver.close()
+    closeBrowserWindow() {    
+        const sessionDebbugingPort = this.driver.capabilities.get(Definitions.Capability.SupportedCapabilities.REMOTE_DEBUGGING_PORT)
+        const powershellCommand = `
+            Get-CimInstance Win32_Process -Filter "name = '${this.browserProcessName}.exe'" | Select ProcessId, CommandLine | % { 
+                If ($_.CommandLine -like '*--remote-debugging-port=${sessionDebbugingPort}*') { 
+                    Stop-Process -Id $_.ProcessId -Force 
+                } 
+            }
+        `
+        return new Promise((resolve, reject) => {
+            exec(powershellCommand, {'shell':'powershell.exe'}, (error) => {
+                if (error) {
+                    console.log(error)
+                    reject(error)
+                }
+    
+                resolve(true)
+            })
+        })
     }
 
-    async saveScreenshot(screenshotFolderPath, imageSufix = "") {
+    saveScreenshot(screenshotFolderPath, imageSufix = "") {
         if (!fs.existsSync(screenshotFolderPath)){
             fs.mkdirSync(screenshotFolderPath, { recursive: true })
         }
 
-        const screenshot = await this.driver.takeScreenshot()
-        fs.writeFileSync(path.join(screenshotFolderPath, `${Date.now()}${imageSufix}.png`), screenshot, 'base64')
+        return screenshot(path.join(screenshotFolderPath, `${Date.now()}${imageSufix}.png`))
     }
     
-    async navigate(url = "about:blank", waitForBody = true) {
-        await this.driver.get(url)
-        if (waitForBody) {
-            await this.getHTMLElementRef('/html/body')
-        }
-   
-        return this.driver.getCurrentUrl()
+    navigate(url = "about:blank", waitForBody = true) {
+        return new Promise((resolve, reject) => {
+            this.driver.browserInstance.navigate(url).then(() => {
+                SystemHelper.sleep(2 * 1000).then(() => {
+                    this.waitForHTMLElement('/html/body', (waitForBody ? 30 * 1000 : -1)).then((result) => {
+                        if (!result) {
+                            resolve(false)
+                        }
+    
+                        this.driver.browserInstance.eval('window.location.href').then((currentUrl) => {
+                            resolve(currentUrl.value)
+                        })
+                    })
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
     }   
 
-    async hoverOverHTMLElement(selector, waitForElement = true) {
-        const element = await this.getHTMLElementRef(selector, waitForElement)
-        const actions = this.driver.actions()
-        const mouse = actions.mouse()
-
-        return actions.pause(mouse).move({origin: element}).perform()
+    clickOnHTMLElement(selector) {
+        return this.driver.browserInstance.eval(`${xPathHelper.getHTMLElementByxPathJSString(selector)}.singleNodeValue.click()`)
     }
 
-    async clickOnHTMLElement(selector, waitForElement = true) {
-        const element = await this.getHTMLElementRef(selector, waitForElement)
-        return element.click()
-    }
+    waitForHTMLElement(selector, timeout = 10 * 1000) {
+        return new Promise((resolve, reject) => {
+            if (timeout < 0) {
+                resolve(true)
+            }
+            
+            this.driver.browserInstance.eval(`
+                window.kitaExec = () => {
+                    let element = null
+                    const startingDate = new Date()
+                    while (element === null && (startingDate.getTime() + ${timeout}) >= (new Date()).getTime()) {
+                        element = ${xPathHelper.getHTMLElementByxPathJSString(selector)}.singleNodeValue
+                    }
 
-    async waitForHTMLElement(selector, timeout = 10 * 1000) {
-        const elementBy = By.xpath(selector)
-        await this.driver.wait(until.elementLocated(elementBy), timeout)
-        return this.driver.findElement(elementBy)
+                    setTimeout(() => {
+                        delete window.kitaExec
+                    }, 0)
+                    
+                    return element !== null
+                }
+                window.kitaExec()
+            `).then((response) => {
+                resolve(response.value)
+            }, (err) => {
+                reject(err)
+            })
+        })
     } 
 
-    async verifyThatElementsExists(selector) {
-        const elementBy = By.xpath(selector)
-        const elements = await this.driver.findElements(elementBy)
-        return elements.length > 0
+    verifyThatElementsExists(selector) {
+        return new Promise((resolve, reject) => {
+            this.waitForHTMLElement(selector, 0).then((result) => {
+                resolve(result)
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
 
-    async getHTMLElementRef(selector, waitForElement = true) {
-        let element = null
-        if (waitForElement) {
-            element = await this.waitForHTMLElement(selector)
-        } else {
-            element = await this.driver.findElement(By.xpath(selector))
-        }
+    getHTMLElementAttribute(selector, attribute) {
+        return this.driver.browserInstance.eval(`
+            window.kitaExec = () => {
+                let element = ${xPathHelper.getHTMLElementByxPathJSString(selector)}.singleNodeValue
 
-        return element
-    }
-
-    async getHTMLElementAttribute(selector, attribute, waitForElement = true) {
-        let element = await this.getHTMLElementRef(selector, waitForElement)
-        return element.getAttribute(attribute) 
-    }
-
-    async setHTMLElementValue(selector, value, waitForElement = true) {
-        await this.sendKeyStrokeToHTMLElement(selector, value, waitForElement)
-
-        const currentValue = await this.getHTMLElementAttribute(selector, 'value') 
-        return currentValue === value
-    }
-
-    async sendKeyStrokeToHTMLElement(selector, key, waitForElement = true) {
-        const element = await this.getHTMLElementRef(selector, waitForElement)
-        await element.sendKeys(key)
-        return true
-    }
-
-    async getAllElementsInnerText(selector, waitForElement = true, excludeEmpty = true) {
-        const results = []
-
-        if (waitForElement) {
-            await this.waitForHTMLElement(selector)
-        }
-
-        const elements = await this.driver.findElements(By.xpath(selector))
-        for (let i = 0; i < elements.length; i++) {
-            const element = elements[i]
-            const elementInnerText = await element.getText()
-            
-            if (excludeEmpty && elementInnerText.length < 1) {
-                continue
+                setTimeout(() => {
+                    delete window.kitaExec
+                }, 0)
+                
+                return element.getAttribute('${attribute}')
             }
+            window.kitaExec()
+        `)
+    }
 
-            results[i] = elementInnerText
-        }
+    setHTMLElementValue(selector, value) {
+        return new Promise((resolve, reject) => {
+            this.driver.browserInstance.eval(`
+                window.kitaExec = () => {
+                    const element = ${xPathHelper.getHTMLElementByxPathJSString(selector)}.singleNodeValue
+                    element.value = '${value.replace(`'`, `\\'`)}'
 
-        return results
+                    setTimeout(() => {
+                        delete window.kitaExec
+                    }, 0)
+                    
+                    return element.dispatchEvent(new Event('input'))
+                }
+                window.kitaExec()
+            `).then(() => {
+                this.getHTMLElementAttribute(selector, 'value').then((attribute) => {
+                    resolve(attribute.value === value)
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
+    }
+
+    sendKeyStrokeToHTMLElement(selector, key, location = 0) {
+        return new Promise((resolve, reject) => {
+            const eventChain = ['keydown', 'keyup', 'keypress']
+            let script = `
+                window.kitaExec = () => {
+                    const element = ${xPathHelper.getHTMLElementByxPathJSString(selector)}.singleNodeValue
+                    const results = []
+            `
+            eventChain.forEach((type) => {
+                script += `
+                    event = ${JSKeyboard.getKeyboardEventJSString(type, key, location)}
+                    results.push(element.dispatchEvent(event))
+                `
+            })
+
+            script += `
+                    setTimeout(() => {
+                        delete window.kitaExec
+                    }, 0)
+                    
+                    return JSON.stringify(results)
+                }
+                window.kitaExec()
+            `
+            
+            this.driver.browserInstance.eval(script).then(() => {
+                resolve(true)
+            }, (err) => {
+                reject(err)
+            })
+        })
+    }
+
+    getAllElementsInnerText(selector, excludeEmpty = true) {
+        return new Promise((resolve, reject) => {
+            this.driver.browserInstance.eval(`
+                window.kitaExec = () => {
+                    const nodesInnerText = []
+                    const nodesIterator = ${xPathHelper.getHTMLElementByxPathJSString(selector, 'XPathResult.UNORDERED_NODE_ITERATOR_TYPE')}
+                    let node = nodesIterator.iterateNext()
+                    while (node) {
+                        const innerText = node.innerText
+                        if (${excludeEmpty} === false
+                            || (${excludeEmpty} === true 
+                                && innerText.length > 0)
+                        ) {
+                            nodesInnerText.push(node.textContent)
+                        }
+                        node = nodesIterator.iterateNext()
+                    } 
+
+                    setTimeout(() => {
+                        delete window.kitaExec
+                    }, 0)
+
+                    return JSON.stringify(nodesInnerText)
+                }
+
+                window.kitaExec()
+            `).then((result) => {
+                resolve(JSON.parse(result.value))
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
 }
 

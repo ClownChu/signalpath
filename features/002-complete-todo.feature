@@ -8,6 +8,11 @@ Feature: Complete items in list
     When I click to complete the items: "<items-to-complete>"
     Then I should see the items "<completed-items>" completed and the items "<incomplete-items>" still incomplete
 
+  @debug
+  Examples:
+    | browser                    | all-items-in-list                                                                                                                                                           | items-to-complete                                                         | completed-items                                                                                                                                                               | incomplete-items                                                                                  |
+    | Microsoft Edge             | Create cucumber application capable of testing this page;Test application;Write application's documentation;Write test cases;Validate test cases;Submit testing application | Create cucumber application capable of testing this page;Test application | Create cucumber application capable of testing this page;Test application                                                                                                     | Write application's documentation;Write test cases;Validate test cases;Submit testing application |
+
   @smoke
   Examples:
     | browser                    | all-items-in-list                                                                                                                                                           | items-to-complete                                                         | completed-items                                                                                                                                                               | incomplete-items                                                                                  |

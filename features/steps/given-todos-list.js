@@ -8,7 +8,7 @@ const options = {
 
 Given('that I navigated to the todo list page using {string}', options, async function (browserDisplayName) {
   const result = await ToDosList.navigateToList(browserDisplayName)
-
+  
   assert.strictEqual(result, true)
 })
 

@@ -1,5 +1,6 @@
 const path = require('path')
 const fs = require('fs')
+const { SystemHelper } = require('./helpers/System')
 
 class TODOsList {
     constructor() {
@@ -16,95 +17,186 @@ class TODOsList {
         this.browser = require('./helpers/browser')
     }
 
-    async navigateToList(browserDisplayName) {
-        await this.browser.initiateBrowser(browserDisplayName, this.scenarioCollection)
-        const currentUrl = await this.browser.navigate(this.scenarioUrl)
+    navigateToList(browserDisplayName) {
+        return new Promise((resolve, reject) => {
+            this.browser.initiateBrowser(browserDisplayName, this.scenarioCollection).then((result) => {
+                if (!result) {
+                    resolve(false)
+                }
 
-        return currentUrl === this.scenarioUrl
+                this.browser.navigate(this.scenarioUrl).then((currentUrl) => {
+                    resolve(currentUrl === this.scenarioUrl)
+                }, (err) => {
+                    reject(err)
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
 
-    async waitForListToLoad() {
-        const element = await this.browser.waitForHTMLElement(this.scenarioPageSelectors.newTodoInput)
-        return element !== undefined
+    waitForListToLoad() {
+        return new Promise((resolve, reject) => {
+            this.browser.waitForHTMLElement(this.scenarioPageSelectors.newTodoInput).then((result) => {
+                resolve(result)
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
     
-    async addNewItemsToList(arrayOfNewItemsForTheList) {
-        let result = true
-        for (let i = 0; i < arrayOfNewItemsForTheList.length; i++) {
-            const item = arrayOfNewItemsForTheList[i]
-            if (await this.browser.setHTMLElementValue(this.scenarioPageSelectors.newTodoInput, item)) {
-                await this.browser.sendKeyStrokeToHTMLElement(this.scenarioPageSelectors.newTodoInput, this.browser.Key.ENTER)
-            } else {
-                result = false
-            }
-        }
-
-        return result
-    }
-
-    async completeItemsInList(arrayOfItemsToCompleteInList) {
-        for (let i = 0; i < arrayOfItemsToCompleteInList.length; i++) {
-            const todoItemLabel = arrayOfItemsToCompleteInList[i]
-
-            const itemCheckboxSelectorByInnerText = this.scenarioPageSelectors.todosListCheckbox.replace('/div/input', `/div[./label[contains(text(),"${todoItemLabel}")]]/input`)
-            await this.browser.clickOnHTMLElement(itemCheckboxSelectorByInnerText)
-        }
-
-        return true
-    }
-
-    async removeItemsFromList(arrayOfItemsToRemoveFromList) {
-        for (let i = 0; i < arrayOfItemsToRemoveFromList.length; i++) {
-            const todoItemLabel = arrayOfItemsToRemoveFromList[i]
-
-            const itemDeleteIconSelectorByInnerText = this.scenarioPageSelectors.todosListRemoveIcon.replace('/div/button', `/div[./label[contains(text(),"${todoItemLabel}")]]/button`)
-            
-            await this.browser.hoverOverHTMLElement(itemDeleteIconSelectorByInnerText.replace('/button', ''))
-            await this.browser.clickOnHTMLElement(itemDeleteIconSelectorByInnerText)
-        }
-
-        return true
-    }
-
-    async getAllItemsInList() {
-        if (!await this.browser.verifyThatElementsExists(this.scenarioPageSelectors.todosListLabel)) {
-            return []
-        }
+    addNewItemsToList(arrayOfNewItemsForTheList) {
+        const addToListPromise = item => new Promise((resolve, reject) => {
+            this.browser.setHTMLElementValue(this.scenarioPageSelectors.newTodoInput, item).then((result) => {
+                if (!result) {
+                    resolve(false)
+                }
+                
+                this.browser.sendKeyStrokeToHTMLElement(this.scenarioPageSelectors.newTodoInput, 'Enter').then((result) => {
+                    SystemHelper.sleep(500).then(() => {
+                        resolve(result)
+                    })
+                }, (err) => {
+                    reject(err)
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
         
-        const itemsInList = await this.browser.getAllElementsInnerText(this.scenarioPageSelectors.todosListLabel) 
-        return itemsInList
+        
+        return new Promise((resolve) => {
+            arrayOfNewItemsForTheList.reduce(
+                (p, x) => p.then(() => addToListPromise(x)),
+                Promise.resolve()
+            ).then(() => {
+                resolve(true)
+            })
+        })
     }
 
-    async getIncompleteItemsInList() {
+    completeItemsInList(arrayOfItemsToCompleteInList) {
+        const completeItemInListPromise = item => new Promise((resolve, reject) => {
+            const itemCheckboxSelectorByInnerText = this.scenarioPageSelectors.todosListCheckbox.replace('/div/input', `/div[./label[contains(text(),"${item}")]]/input`)
+            this.browser.clickOnHTMLElement(itemCheckboxSelectorByInnerText).then((result) => {
+                SystemHelper.sleep(500).then(() => {
+                    resolve(result)
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
+        
+        return new Promise((resolve) => {
+            arrayOfItemsToCompleteInList.reduce(
+                (p, x) => p.then(() => completeItemInListPromise(x)),
+                Promise.resolve()
+            ).then(() => {
+                resolve(true)
+            })
+        })
+    }
+
+    removeItemsFromList(arrayOfItemsToRemoveFromList) {
+        const removeItemInListPromise = item => new Promise((resolve, reject) => {
+            const itemDeleteIconSelectorByInnerText = this.scenarioPageSelectors.todosListRemoveIcon.replace('/div/button', `/div[./label[contains(text(),"${item}")]]/button`)
+            this.browser.clickOnHTMLElement(itemDeleteIconSelectorByInnerText).then((result) => {
+                SystemHelper.sleep(500).then(() => {
+                    resolve(result)
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
+        
+        return new Promise((resolve) => {
+            arrayOfItemsToRemoveFromList.reduce(
+                (p, x) => p.then(() => removeItemInListPromise(x)),
+                Promise.resolve()
+            ).then(() => {
+                resolve(true)
+            })
+        })
+    }
+
+    getAllItemsInList() {
+        return new Promise((resolve, reject) => {
+            this.browser.verifyThatElementsExists(this.scenarioPageSelectors.todosListLabel).then((result) => {
+                if (!result) {
+                    resolve([])
+                }
+
+                this.browser.getAllElementsInnerText(this.scenarioPageSelectors.todosListLabel).then((itemsInList) => {
+                    resolve(itemsInList)
+                }, (err) => {
+                    reject(err)
+                })
+
+            }, (err) => {
+                reject(err)
+            })
+        })
+    }
+
+    getIncompleteItemsInList() {
         const incomletedItemsInListSelector = this.scenarioPageSelectors.todosListLabel.replace('/ul/li/', '/ul/li[not(contains(@class, "completed"))]/')
-        if (!await this.browser.verifyThatElementsExists(incomletedItemsInListSelector)) {
-            return []
-        }
         
-        const incompletedItemsInList = await this.browser.getAllElementsInnerText(incomletedItemsInListSelector) 
-        return incompletedItemsInList
+        return new Promise((resolve, reject) => {
+            this.browser.verifyThatElementsExists(incomletedItemsInListSelector).then((result) => {
+                if (!result) {
+                    resolve([])
+                }
+
+                this.browser.getAllElementsInnerText(incomletedItemsInListSelector).then((incompletedItemsInList) => {
+                    resolve(incompletedItemsInList)
+                }, (err) => {
+                    reject(err)
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
 
-    async getCompletedItemsInList() {
+    getCompletedItemsInList() {
         const comletedItemsInListSelector = this.scenarioPageSelectors.todosListLabel.replace('/ul/li/', '/ul/li[contains(@class, "completed")]/')
-        if (!await this.browser.verifyThatElementsExists(comletedItemsInListSelector)) {
-            return []
-        }
         
-        const completedItemsInList = await this.browser.getAllElementsInnerText(comletedItemsInListSelector) 
-        return completedItemsInList
+        return new Promise((resolve, reject) => {
+            this.browser.verifyThatElementsExists(comletedItemsInListSelector).then((result) => {
+                if (!result) {
+                    resolve([])
+                }
+
+                this.browser.getAllElementsInnerText(comletedItemsInListSelector).then((completedItemsInList) => {
+                    resolve(completedItemsInList)
+                }, (err) => {
+                    reject(err)
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
 
-    async getIncompleteItemCounter() {
-        if (!await this.browser.verifyThatElementsExists(this.scenarioPageSelectors.todosListCounter)) {
-            return 0
-        }
+    getIncompleteItemCounter() {
+        return new Promise((resolve, reject) => {
+            this.browser.verifyThatElementsExists(this.scenarioPageSelectors.todosListCounter).then((result) => {
+                if (!result) {
+                    resolve(0)
+                }
 
-        const counterValue = await this.browser.getAllElementsInnerText(this.scenarioPageSelectors.todosListCounter) 
-        return parseInt(counterValue)
+                this.browser.getAllElementsInnerText(this.scenarioPageSelectors.todosListCounter).then((counterValue) => {
+                    resolve(parseInt(counterValue))
+                }, (err) => {
+                    reject(err)
+                })
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
 
-    async afterScenarioExecution(scenario) {
+    afterScenarioExecution(scenario) {
         const screenshotFolderPath = path.join(
             __dirname, 
             `../screenshots/${this.scenarioCollection}`, 
@@ -112,31 +204,47 @@ class TODOsList {
             this.browser.browserDisplayName
         )
 
-        await this.browser.saveScreenshot(screenshotFolderPath, `_${scenario.result.status}`)
+        return new Promise((resolve, reject) => {
+            this.browser.saveScreenshot(screenshotFolderPath, `_${scenario.result.status}`)
 
-        await this.browser.closeBrowserWindow()
+            this.browser.closeBrowserWindow().then(() => {
+                resolve(true)
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
 
-    async beforeAllScenariosExecution() {
-        await this.afterAllScenariosExecution()
-
+    beforeAllScenariosExecution() {
         const screenshotsFolderPath = path.join(__dirname, `../screenshots/${this.scenarioCollection}`)
         if (fs.existsSync(screenshotsFolderPath)) {
             fs.rmdirSync(screenshotsFolderPath, {
                 recursive: true,
             })
         }
-        fs.mkdirSync(screenshotsFolderPath, { recursive: true })
+
+        return new Promise((resolve) => {
+            this.afterAllScenariosExecution().then(() => {
+                fs.mkdirSync(screenshotsFolderPath, { recursive: true })
+
+                resolve(true)
+            })
+        })
     }
 
-    async afterAllScenariosExecution() {
+    afterAllScenariosExecution() {
         const tempFolderPath = path.join(__dirname, `../temp/${this.scenarioCollection}`)
-        if (fs.existsSync(tempFolderPath)) {
-            fs.rmdirSync(tempFolderPath, {
-                recursive: true,
-            })
-        }
-        fs.mkdirSync(tempFolderPath, { recursive: true })
+
+        return new Promise((resolve) => {
+            if (fs.existsSync(tempFolderPath)) {
+                fs.rmdirSync(tempFolderPath, {
+                    recursive: true,
+                })
+            }
+            fs.mkdirSync(tempFolderPath, { recursive: true })
+
+            resolve(true)
+        })
     }
 }
 
