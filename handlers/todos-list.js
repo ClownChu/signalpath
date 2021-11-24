@@ -205,12 +205,12 @@ class TODOsList {
         )
 
         return new Promise((resolve, reject) => {
-            this.browser.saveScreenshot(screenshotFolderPath, `_${scenario.result.status}`)
-
-            this.browser.closeBrowserWindow().then(() => {
-                resolve(true)
-            }, (err) => {
-                reject(err)
+            this.browser.saveScreenshot(screenshotFolderPath, `_${scenario.result.status}`).then(() => {
+                this.browser.closeBrowserWindow().then(() => {
+                    resolve(true)
+                }, (err) => {
+                    reject(err)
+                })
             })
         })
     }

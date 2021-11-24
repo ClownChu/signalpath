@@ -5,7 +5,6 @@ const screenshot = require('desktop-screenshot');
 const { xPathHelper } = require('./xPath');
 const { JSKeyboard } = require('./jsKeyboard');
 const { SystemHelper } = require('./System');
-const { exec } = require('child_process');
 
 class Browser {
     constructor () {
@@ -54,22 +53,13 @@ class Browser {
     }
 
     closeBrowserWindow() {    
-        const sessionDebbugingPort = this.driver.capabilities.get(Definitions.Capability.SupportedCapabilities.REMOTE_DEBUGGING_PORT)
-        const powershellCommand = `
-            Get-CimInstance Win32_Process -Filter "name = '${this.browserProcessName}.exe'" | Select ProcessId, CommandLine | % { 
-                If ($_.CommandLine -like '*--remote-debugging-port=${sessionDebbugingPort}*') { 
-                    Stop-Process -Id $_.ProcessId -Force 
-                } 
-            }
-        `
         return new Promise((resolve, reject) => {
-            exec(powershellCommand, {'shell':'powershell.exe'}, (error) => {
-                if (error) {
-                    console.log(error)
-                    reject(error)
-                }
-    
-                resolve(true)
+            this.driver.browserInstance.close().then(() => {
+                SystemHelper.sleep(2000).then(() => {
+                    resolve(true)
+                })
+            }, (err) => {
+                reject(err)
             })
         })
     }
@@ -79,7 +69,19 @@ class Browser {
             fs.mkdirSync(screenshotFolderPath, { recursive: true })
         }
 
-        return screenshot(path.join(screenshotFolderPath, `${Date.now()}${imageSufix}.png`))
+        return new Promise((resolve, reject) => {
+            this.driver.browserInstance.takeScreenshot().then((screenshot) => {
+                fs.writeFileSync(path.join(screenshotFolderPath, `${Date.now()}${imageSufix}.jpeg`), screenshot.data, 'base64')
+
+                if (!fs.existsSync(screenshotFolderPath)){
+                    fs.mkdirSync(screenshotFolderPath, { recursive: true })
+                }
+
+                resolve(true)
+            }, (err) => {
+                reject(err)
+            })
+        })
     }
     
     navigate(url = "about:blank", waitForBody = true) {
